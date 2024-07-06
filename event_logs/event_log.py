@@ -2,7 +2,7 @@ import datetime as dt
 from pandas import DataFrame
 from numpy import datetime64
 from typing import Iterator, Optional
-from collections.abc import MutableSequence
+from collections.abc import Sequence, Collection
 
 
 def ensure_event_log_column_convention(data:DataFrame, current_name:str, convention_name:str, rename_dict:dict):
@@ -56,12 +56,12 @@ class EventLog:
         return self.data.__str__()
 
 
-class Trace(MutableSequence):
+class Trace(Sequence):
     """
     A trace is a sequence of activities. One trace represents a case where the elements in the trace represent
     the chronological order of activities performed on that case.
     """
-    def __init__(self, case_id:str, data:list=[]):
+    def __init__(self, case_id:str, data:list):
         self.case_id = case_id
         self._data = data
     
@@ -69,7 +69,12 @@ class Trace(MutableSequence):
         return f'CASE ID: {self.case_id} = <{",".join(self._data)}>'
     
     def __hash__(self) -> int:
-        return hash(self.case_id)
+        ret = 0
+        for act in self._data:
+            ret += hash(act)
+            ret = ret % 479001599
+        return ret
+        
     
     def __getitem__(self, index):
         return self._data[index]
@@ -83,9 +88,6 @@ class Trace(MutableSequence):
     def __len__(self):
         return len(self._data)
     
-    def insert(self, index, value):
-        self._data.insert(index, value)
-    
     def __iter__(self) -> Iterator:
         return self._data.__iter__()
     
@@ -97,9 +99,6 @@ class Trace(MutableSequence):
                 return False
         return True
 
-    def append(self, value):
-        self.insert(len(self), value)
-
 
 class SimplifiedEventLog:
     """
@@ -108,25 +107,31 @@ class SimplifiedEventLog:
     we find them.
     """
     def __init__(self, event_log:EventLog) -> None:
-        self.traces = {}
-
+        
+        trace_builders = {}
         for i in range(len(event_log.data)):
             event = event_log.data.iloc[i]
             case_id = event['case_id']
             activity = event['activity']
-            if self.traces.get(case_id) is not None:
-                trace = self.traces[case_id]
-                trace.append(activity)
+            if trace_builders.get(case_id) is not None:
+                trace_data = trace_builders[case_id]
+                trace_data.append(activity)
             else:
-                self.traces[case_id] = Trace(case_id, [activity])
-                
+                trace_builders[case_id] = [activity]
+        
+        self._traces = {}
+        for case_id in trace_builders.keys():
+            self._traces[case_id] = Trace(case_id, trace_builders[case_id])
+    
+    def __str__(self):
+        return self._traces.__str__()
     
     def count_traces(self) -> dict:
         """
         Counts the number of occurences of each trace in the simplified event log.
         """
         trace_count = {}
-        for trace in self.traces.values():
+        for trace in self._traces.values():
             if trace_count.get(trace) is not None:
                 trace_count[trace] += 1
             else:

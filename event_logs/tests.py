@@ -123,11 +123,7 @@ class TestTraceClass(unittest.TestCase):
         return super().setUp()
     
     def test_trace_construction(self):
-        trace = Trace('case_1')
-        trace.append('a')
-        trace.append('b')
-        trace.append('c')
-        trace.append('d')
+        trace = Trace('case_1', ['a', 'b', 'c', 'b', 'd'])
         print(trace)
 
 class TestSimplifiedEventLog(unittest.TestCase):
@@ -150,7 +146,7 @@ class TestSimplifiedEventLog(unittest.TestCase):
         """
         event_log = EventLog(self.data)
         simplified_event_log = SimplifiedEventLog(event_log)
-        traces = simplified_event_log.traces
+        traces = simplified_event_log._traces
 
         a1_expected_trace = Trace('a1', ['a', 'b'])
         a2_expected_trace = Trace('a2', ['a', 'c'])
@@ -161,9 +157,9 @@ class TestSimplifiedEventLog(unittest.TestCase):
     def test_count_traces(self):
         event_log = EventLog(self.data)
         simplified_event_log = SimplifiedEventLog(event_log)
+        print(simplified_event_log)
         trace_count = simplified_event_log.count_traces()
-        print(trace_count)
-        expected_trace_count = {Trace('any', ['a', 'b']) : 1, Trace('any2', ['a', 'c']):2}
+        expected_trace_count = {Trace('any', ['a', 'b']) : 1, Trace('any2', ['a', 'c']):1}
         self.assertDictEqual(trace_count, expected_trace_count)
 
 
